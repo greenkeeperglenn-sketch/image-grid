@@ -34,7 +34,7 @@ if image_file and excel_file:
         fill_color="rgba(255, 0, 0, 0.3)",
         stroke_width=3,
         stroke_color="#FF0000",
-        background_image=image,
+        background_image=image_np,  # ✅ FIXED: must be numpy, not PIL
         update_streamlit=True,
         height=image.size[1],
         width=image.size[0],
