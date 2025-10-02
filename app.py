@@ -24,8 +24,8 @@ if st.button("Reset points"):
 if image_file and excel_file:
     # --- Load image safely ---
     try:
-        image = Image.open(image_file).convert("RGBA")  # PIL image in RGBA
-        image_np = np.array(image)  # NumPy array for canvas & OpenCV
+        image = Image.open(image_file).convert("RGB")  # ✅ force RGB (3 channels)
+        image_np = np.array(image)                     # ✅ NumPy (H,W,3)
     except Exception as e:
         st.error(f"❌ Could not load image: {e}")
         st.stop()
@@ -52,7 +52,7 @@ if image_file and excel_file:
             fill_color="rgba(255, 0, 0, 0.3)",
             stroke_width=3,
             stroke_color="#FF0000",
-            background_image=image_np,  # ✅ NumPy RGBA
+            background_image=image_np,  # ✅ NumPy RGB
             update_streamlit=True,
             height=image_np.shape[0],
             width=image_np.shape[1],
