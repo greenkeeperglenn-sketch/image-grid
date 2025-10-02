@@ -3,12 +3,13 @@ import cv2
 import numpy as np
 import pandas as pd
 import os
+import io
 from datetime import datetime
 from PIL import Image
 from streamlit_drawable_canvas import st_canvas
 
 st.set_page_config(layout="wide")
-st.title("📸 Trial Plot Overlay Tool (Stable Prototype)")
+st.title("📸 Trial Plot Overlay Tool (BytesIO Fix)")
 
 # --- Inputs ---
 trial_id = st.text_input("Trial ID", "TrialA")
@@ -22,11 +23,11 @@ if st.button("Reset points"):
     st.session_state["points"] = []
 
 if image_file and excel_file:
-    # --- Load full image for processing ---
+    # --- Load full image ---
     image_full = Image.open(image_file).convert("RGB")
-    image_np_full = np.array(image_full, dtype=np.uint8)   # full res for OpenCV
+    image_np_full = np.array(image_full, dtype=np.uint8)
 
-    # --- Resize for canvas (smaller = safer for frontend) ---
+    # --- Resize for canvas ---
     max_width = 1200
     scale = min(1.0, max_width / image_full.width)
     if scale < 1.0:
@@ -36,8 +37,10 @@ if image_file and excel_file:
     else:
         image_canvas = image_full
 
-    # NumPy RGB array for st_canvas (must be uint8, HxWx3)
-    image_np_canvas = np.array(image_canvas.convert("RGB"), dtype=np.uint8)
+    # Convert PIL → BytesIO buffer for st_canvas
+    img_bytes = io.BytesIO()
+    image_canvas.save(img_bytes, format="PNG")
+    img_bytes.seek(0)
 
     # --- Load Excel ---
     df = pd.read_excel(excel_file, header=None)
@@ -45,16 +48,16 @@ if image_file and excel_file:
     st.write(f"📑 Detected treatment grid: **{n_rows} rows × {n_cols} cols**")
 
     # --- Canvas for corner selection ---
-    st.markdown("### Step 1: Click 4 outer corners of the grid (Top-Left, Top-Right, Bottom-Right, Bottom-Left)")
+    st.markdown("### Step 1: Click 4 outer corners of the grid (TL, TR, BR, BL)")
 
     canvas_result = st_canvas(
         fill_color="rgba(255, 0, 0, 0.3)",
         stroke_width=3,
         stroke_color="#FF0000",
-        background_image=image_np_canvas,   # ✅ NumPy RGB uint8
+        background_image=img_bytes,   # ✅ File-like buffer works
         update_streamlit=True,
-        height=image_np_canvas.shape[0],
-        width=image_np_canvas.shape[1],
+        height=image_canvas.height,
+        width=image_canvas.width,
         drawing_mode="point",
         point_display_radius=6,
         key="canvas",
@@ -82,7 +85,7 @@ if image_file and excel_file:
                 [0, n_rows * 100]
             ], dtype="float32")
 
-            # Perspective transform on full-size image
+            # Perspective transform
             M = cv2.getPerspectiveTransform(pts_src, pts_dst)
             warped = cv2.warpPerspective(image_np_full, M, (n_cols * 100, n_rows * 100))
 
