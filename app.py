@@ -8,7 +8,7 @@ from PIL import Image
 from streamlit_drawable_canvas import st_canvas
 
 st.set_page_config(layout="wide")
-st.title("📸 Trial Plot Overlay Tool (Prototype)")
+st.title("📸 Trial Plot Overlay Tool (Prototype with Resize)")
 
 # --- Inputs ---
 trial_id = st.text_input("Trial ID", "TrialA")
@@ -24,11 +24,23 @@ if st.button("Reset points"):
 if image_file and excel_file:
     # --- Load image safely ---
     try:
-        image = Image.open(image_file).convert("RGB")  # ✅ force RGB (3 channels)
-        image_np = np.array(image)                     # ✅ NumPy (H,W,3)
+        image_full = Image.open(image_file).convert("RGB")   # Full-size PIL image
+        image_np_full = np.array(image_full)                 # Full-size NumPy
     except Exception as e:
         st.error(f"❌ Could not load image: {e}")
         st.stop()
+
+    # --- Resize for canvas (to avoid frontend payload issues) ---
+    max_width = 1200
+    scale = min(1.0, max_width / image_full.width)
+    if scale < 1.0:
+        image_canvas = image_full.resize(
+            (int(image_full.width * scale), int(image_full.height * scale))
+        )
+    else:
+        image_canvas = image_full
+
+    image_np_canvas = np.array(image_canvas)   # NumPy for st_canvas
 
     # --- Load Excel sheet safely ---
     try:
@@ -52,10 +64,10 @@ if image_file and excel_file:
             fill_color="rgba(255, 0, 0, 0.3)",
             stroke_width=3,
             stroke_color="#FF0000",
-            background_image=image_np,  # ✅ NumPy RGB
+            background_image=image_np_canvas,   # ✅ smaller version
             update_streamlit=True,
-            height=image_np.shape[0],
-            width=image_np.shape[1],
+            height=image_np_canvas.shape[0],
+            width=image_np_canvas.shape[1],
             drawing_mode="point",
             point_display_radius=6,
             key="canvas",
@@ -70,14 +82,16 @@ if image_file and excel_file:
         st.session_state["points"] = [(obj["left"], obj["top"]) for obj in objects]
 
     if "points" in st.session_state:
-        st.write("📍 Selected points:", st.session_state["points"])
+        st.write("📍 Selected points (resized image):", st.session_state["points"])
 
         if len(st.session_state["points"]) == 4:
             st.success("✅ 4 corners selected! Applying perspective correction...")
 
             try:
-                # Source and destination points
-                pts_src = np.array(st.session_state["points"], dtype="float32")
+                # Rescale points back to full resolution
+                rescaled_points = [(x / scale, y / scale) for (x, y) in st.session_state["points"]]
+                pts_src = np.array(rescaled_points, dtype="float32")
+
                 pts_dst = np.array([
                     [0, 0],
                     [n_cols * 100, 0],
@@ -85,9 +99,9 @@ if image_file and excel_file:
                     [0, n_rows * 100]
                 ], dtype="float32")
 
-                # Perspective transform
+                # Perspective transform on full-size image
                 M = cv2.getPerspectiveTransform(pts_src, pts_dst)
-                warped = cv2.warpPerspective(image_np, M, (n_cols * 100, n_rows * 100))
+                warped = cv2.warpPerspective(image_np_full, M, (n_cols * 100, n_rows * 100))
 
                 # --- Overlay treatment numbers ---
                 for i in range(n_rows):
