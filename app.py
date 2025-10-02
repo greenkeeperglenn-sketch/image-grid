@@ -18,9 +18,9 @@ image_file = st.file_uploader("Upload drone image (JPEG/PNG)", type=["jpg","jpeg
 excel_file = st.file_uploader("Upload treatment layout (Excel)", type=["xls","xlsx"])
 
 if image_file and excel_file:
-    # --- Load image ---
-    image = Image.open(image_file).convert("RGB")
-    image_np = np.array(image)
+    # --- Load image as PIL (RGBA for canvas) and also NumPy (for OpenCV) ---
+    image = Image.open(image_file).convert("RGBA")   # ✅ good for st_canvas
+    image_np = np.array(image.convert("RGB"))        # ✅ good for OpenCV
 
     # --- Load Excel sheet ---
     df = pd.read_excel(excel_file, header=None)
@@ -34,7 +34,7 @@ if image_file and excel_file:
         fill_color="rgba(255, 0, 0, 0.3)",
         stroke_width=3,
         stroke_color="#FF0000",
-        background_image=image_np,  # ✅ FIXED: must be numpy, not PIL
+        background_image=image,  # ✅ must be PIL.Image
         update_streamlit=True,
         height=image.size[1],
         width=image.size[0],
