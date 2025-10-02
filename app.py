@@ -8,7 +8,7 @@ from PIL import Image
 from streamlit_drawable_canvas import st_canvas
 
 st.set_page_config(layout="wide")
-st.title("📸 Trial Plot Overlay Tool (Prototype with Resize)")
+st.title("📸 Trial Plot Overlay Tool (Prototype with Resize, Fixed)")
 
 # --- Inputs ---
 trial_id = st.text_input("Trial ID", "TrialA")
@@ -24,7 +24,7 @@ if st.button("Reset points"):
 if image_file and excel_file:
     # --- Load full image ---
     image_full = Image.open(image_file).convert("RGB")
-    image_np_full = np.array(image_full)
+    image_np_full = np.array(image_full, dtype=np.uint8)   # ✅ NumPy (H,W,3)
 
     # --- Resize for canvas ---
     max_width = 1200
@@ -35,6 +35,8 @@ if image_file and excel_file:
         )
     else:
         image_canvas = image_full
+
+    image_np_canvas = np.array(image_canvas, dtype=np.uint8)  # ✅ NumPy RGB
 
     # --- Load Excel ---
     df = pd.read_excel(excel_file, header=None)
@@ -48,10 +50,10 @@ if image_file and excel_file:
         fill_color="rgba(255, 0, 0, 0.3)",
         stroke_width=3,
         stroke_color="#FF0000",
-        background_image=image_canvas.convert("RGB"),  # ✅ must be PIL RGB
+        background_image=image_np_canvas,  # ✅ must be NumPy RGB
         update_streamlit=True,
-        height=image_canvas.height,
-        width=image_canvas.width,
+        height=image_np_canvas.shape[0],
+        width=image_np_canvas.shape[1],
         drawing_mode="point",
         point_display_radius=6,
         key="canvas",
