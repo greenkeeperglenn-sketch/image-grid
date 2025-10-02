@@ -3,13 +3,12 @@ import cv2
 import numpy as np
 import pandas as pd
 import os
-import io
 from datetime import datetime
 from PIL import Image
 from streamlit_drawable_canvas import st_canvas
 
 st.set_page_config(layout="wide")
-st.title("📸 Trial Plot Overlay Tool (BytesIO Fix)")
+st.title("📸 Trial Plot Overlay Tool (Final PIL Fix)")
 
 # --- Inputs ---
 trial_id = st.text_input("Trial ID", "TrialA")
@@ -25,7 +24,7 @@ if st.button("Reset points"):
 if image_file and excel_file:
     # --- Load full image ---
     image_full = Image.open(image_file).convert("RGB")
-    image_np_full = np.array(image_full, dtype=np.uint8)
+    image_np_full = np.array(image_full, dtype=np.uint8)   # keep for OpenCV
 
     # --- Resize for canvas ---
     max_width = 1200
@@ -37,24 +36,19 @@ if image_file and excel_file:
     else:
         image_canvas = image_full
 
-    # Convert PIL → BytesIO buffer for st_canvas
-    img_bytes = io.BytesIO()
-    image_canvas.save(img_bytes, format="PNG")
-    img_bytes.seek(0)
-
     # --- Load Excel ---
     df = pd.read_excel(excel_file, header=None)
     n_rows, n_cols = df.shape
     st.write(f"📑 Detected treatment grid: **{n_rows} rows × {n_cols} cols**")
 
-    # --- Canvas for corner selection ---
+    # --- Canvas ---
     st.markdown("### Step 1: Click 4 outer corners of the grid (TL, TR, BR, BL)")
 
     canvas_result = st_canvas(
         fill_color="rgba(255, 0, 0, 0.3)",
         stroke_width=3,
         stroke_color="#FF0000",
-        background_image=img_bytes,   # ✅ File-like buffer works
+        background_image=image_canvas,  # ✅ PIL.Image (correct type)
         update_streamlit=True,
         height=image_canvas.height,
         width=image_canvas.width,
