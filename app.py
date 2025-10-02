@@ -1,24 +1,23 @@
-import streamlit as st
-import numpy as np
 from PIL import Image
+import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 
 st.title("Canvas Test")
 
 file = st.file_uploader("Upload image", type=["jpg","jpeg","png"])
 if file:
+    # Keep as PIL, RGB
     img = Image.open(file).convert("RGB")
-    img = img.resize((800, 600))
-    img_np = np.array(img).astype("uint8")
+    img = img.resize((800, 600))  # shrink for demo
 
     canvas_result = st_canvas(
         fill_color="rgba(255, 0, 0, 0.3)",
         stroke_width=3,
         stroke_color="#FF0000",
-        background_image=(img_np if img_np is not None else None),  # ✅ no ValueError
+        background_image=img,   # ✅ PIL.Image works
         update_streamlit=True,
-        height=img_np.shape[0],
-        width=img_np.shape[1],
+        height=img.height,
+        width=img.width,
         drawing_mode="point",
         point_display_radius=6,
         key="canvas",
